@@ -5,18 +5,18 @@ Ein elegantes Tool zur Erstellung von PDF-Reiseplänen aus strukturierten JSON-D
 ## 🌟 Funktionen
 
 - 📋 Erstellung von strukturierten Reiseplänen aus JSON-Daten
-- 🛫 Übersichtliche Darstellung von Flugdetails
+- 🛫 Automatische Ergänzung von Flugdetails mit minimalen Eingaben (nur Flugnummer und Datum)
 - 🏨 Hotelaufenthalte mit Check-in/Check-out Informationen
 - 🗓️ Aktivitätsplanung mit Zeit und Ort
 - 🖼️ Integration von Logos (Airlines, Hotels)
 - 📱 Zusatzinformationen (Währung, Zeitzone, Notfallkontakte)
+- 🖊️ Modulare Struktur mit Open Sans Font
 
 ## 🚀 Technologie-Stack
 
 - **Python 3.8+**: Moderne, lesbare Programmierung
 - **ReportLab**: Robuste Bibliothek zur PDF-Generierung
-- **Pillow**: Zur Verarbeitung von Bildern
-- **Requests**: Für optional API-Integrationen
+- **Requests**: Für API-Integrationen mit Flugdaten
 
 ## 📦 Installation
 
@@ -25,38 +25,54 @@ Ein elegantes Tool zur Erstellung von PDF-Reiseplänen aus strukturierten JSON-D
 git clone https://github.com/yourusername/reiseplan-generator.git
 cd reiseplan-generator
 
+# Virtuelle Umgebung erstellen und aktivieren
+python3 -m venv venv
+source venv/bin/activate  # Unter Windows: venv\Scripts\activate
+
 # Abhängigkeiten installieren
 pip install -r requirements.txt
 
 # Ordnerstruktur vorbereiten
-mkdir -p assets/airlines assets/hotels data output
+mkdir -p assets/airlines assets/hotels assets/fonts data output
 ```
+
+### Schriften einrichten
+
+Für optimale Ergebnisse sollten Sie die OpenSans-Schriftarten im Verzeichnis `assets/fonts` bereitstellen:
+
+1. Laden Sie die OpenSans-Schriften herunter:
+   - [OpenSans-Regular.ttf](https://github.com/googlefonts/opensans/raw/main/fonts/ttf/OpenSans-Regular.ttf)
+   - [OpenSans-Bold.ttf](https://github.com/googlefonts/opensans/raw/main/fonts/ttf/OpenSans-Bold.ttf)
+
+2. Legen Sie diese Dateien im Verzeichnis `assets/fonts` ab:
+   ```bash
+   cp OpenSans-Regular.ttf OpenSans-Bold.ttf assets/fonts/
+   ```
 
 ## 🔧 Verwendung
 
 ### 1. Reiseplan-Daten erstellen
 
-Erstellen Sie eine JSON-Datei mit Ihrer Reiseplanstruktur und speichern Sie diese im `data/`-Verzeichnis:
+Erstellen Sie eine JSON-Datei mit Ihrer Reiseplanstruktur. Mit der Flight-API-Integration können Sie minimale Flugdaten angeben:
 
 ```json
 {
-  "titel": "London Geschäftsreise",
-  "startdatum": "2025-04-10",
-  "enddatum": "2025-04-15",
-  "reiseziel": "London, Vereinigtes Königreich",
+  "titel": "Geschäftsreise Frankfurt",
+  "startdatum": "2025-05-15",
+  "enddatum": "2025-05-17",
+  "reiseziel": "Frankfurt, Deutschland",
   "reisende": ["Max Mustermann"],
   
   "fluege": [
     {
-      "airline": "SWISS",
-      "flugNr": "LX12",
-      "abflugOrt": "Zürich",
-      "abflugCode": "ZRH",
-      "abflugZeit": "2025-04-10T18:55:00",
-      "ankunftOrt": "London City",
-      "ankunftCode": "LCY", 
-      "ankunftZeit": "2025-04-10T20:00:00",
-      "buchungsNr": "ABCDEF"
+      "flugNr": "LX1070",
+      "flugDatum": "2025-05-15",
+      "buchungsNr": "ABC123"
+    },
+    {
+      "flugNr": "LX1071",
+      "flugDatum": "2025-05-17",
+      "buchungsNr": "ABC123"
     }
   ],
   
@@ -70,16 +86,19 @@ Erstellen Sie eine JSON-Datei mit Ihrer Reiseplanstruktur und speichern Sie dies
 
 - Fügen Sie Ihr persönliches Logo als `assets/logo.png` hinzu
 - Speichern Sie Airline-Logos unter `assets/airlines/` (z.B. `swiss.png`)
-- Speichern Sie Hotel-Logos unter `assets/hotels/` (z.B. `shangri-la-london.png`)
+- Speichern Sie Hotel-Logos unter `assets/hotels/` (z.B. `steigenberger-airport-hotel.png`)
 
 ### 3. PDF generieren
 
 ```bash
 # Über das CLI-Modul
-python cli.py data/reiseplan-london.json
+python cli.py data/reiseplan-minimal.json
 
-# Alternativ direkt über das Hauptmodul
-python reiseplan_generator.py data/reiseplan-london.json
+# Mit automatischem Öffnen des PDFs
+python cli.py data/reiseplan-minimal.json --open
+
+# Mit Debug-Modus für ausführliche Logs
+python cli.py data/reiseplan-minimal.json --debug
 ```
 
 Das generierte PDF wird im `output/`-Verzeichnis gespeichert.
@@ -88,55 +107,53 @@ Das generierte PDF wird im `output/`-Verzeichnis gespeichert.
 
 ```
 reiseplan-generator/
-├── reiseplan_generator.py   # Hauptmodul mit PDF-Generierungsfunktionen
-├── cli.py                   # Command Line Interface
-├── requirements.txt         # Python-Abhängigkeiten
-├── assets/                  # Bilder und andere Assets
-│   ├── logo.png             # Ihr persönliches Logo
-│   ├── airlines/            # Airline-Logos
-│   └── hotels/              # Hotel-Logos
-├── data/                    # JSON-Daten für Reisepläne
-└── output/                  # Generierte PDF-Dokumente
+├── reiseplan_generator/       # Hauptpaket
+│   ├── __init__.py            # Paket-Initialisierung
+│   ├── core.py                # Hauptgenerator-Klasse
+│   ├── elements.py            # PDF-Element-Funktionen
+│   ├── config.py              # Konfigurationseinstellungen
+│   ├── __main__.py            # Einstiegspunkt für Paket-Ausführung
+│   ├── apis/                  # API-Integrationen
+│   │   ├── __init__.py
+│   │   └── flight_api.py      # Fluginformationen-API
+│   └── utils/                 # Hilfsfunktionen
+│       ├── __init__.py
+│       ├── date_utils.py      # Datums-Hilfsfunktionen
+│       ├── font_manager.py    # Font-Management
+│       ├── json_schema.py     # JSON-Schema-Validierung
+│       └── logging_setup.py   # Logging-Konfiguration
+├── cli.py                     # Command Line Interface
+├── requirements.txt           # Python-Abhängigkeiten
+├── README.md                  # Projektdokumentation
+├── assets/                    # Assets-Verzeichnis
+│   ├── logo.png               # Ihr persönliches Logo
+│   ├── airlines/              # Airline-Logos
+│   ├── hotels/                # Hotel-Logos
+│   └── fonts/                 # Schriftarten
+│       ├── OpenSans-Regular.ttf
+│       └── OpenSans-Bold.ttf
+├── data/                      # JSON-Daten für Reisepläne
+└── output/                    # Generierte PDF-Dokumente
 ```
 
-## 🔄 Erweiterte Funktionen
+## 🔄 Flight API Integration
 
-### API-Integration für Flugdaten
+Um die vollständige Flight-API-Funktionalität zu nutzen, müssen Sie einen API-Schlüssel für einen Flugdatendienst wie Aviation Stack erhalten:
 
-Die Methode `hole_fluginformationen()` kann mit APIs wie FlightAware, Amadeus oder Skyscanner verbunden werden, um automatisch aktuelle Flugdaten zu laden:
+1. Registrieren Sie sich für einen API-Schlüssel bei [aviationstack.com](https://aviationstack.com/)
+2. Setzen Sie den API-Schlüssel als Umgebungsvariable:
 
-```python
-# In reiseplan_generator.py
-def hole_fluginformationen(self, flug_nr, datum):
-    api_key = os.environ.get("FLIGHTAPI_KEY")
-    url = f"https://api.flightaware.com/v2/flights/{flug_nr}"
-    response = requests.get(url, headers={"Authorization": f"Bearer {api_key}"})
-    return response.json()
+```bash
+export FLIGHT_API_KEY=Ihr_API_Schlüssel
 ```
 
-### GUI-Oberfläche hinzufügen
+Ohne API-Schlüssel werden minimale Flugdaten unverändert übernommen.
 
-Mit Python-Bibliotheken wie tkinter, PyQt oder Streamlit können Sie leicht eine grafische Benutzeroberfläche erstellen:
-
-```python
-# Beispiel für ein einfaches Streamlit-Interface
-import streamlit as st
-from reiseplan_generator import ReiseplanGenerator
-
-st.title("Reiseplan-Generator")
-uploaded_file = st.file_uploader("JSON-Reiseplan hochladen", type="json")
-
-if uploaded_file is not None:
-    generator = ReiseplanGenerator()
-    pdf_path = generator.generiere_reiseplan(uploaded_file)
-    st.success(f"PDF erfolgreich generiert: {pdf_path}")
-```
-
-## 🤝 Beitragen
+## 🤝 Mitwirken
 
 Beiträge sind willkommen! So können Sie beitragen:
 
-1. Fork des Projekts
+1. Fork des Projekts erstellen
 2. Feature-Branch erstellen (`git checkout -b feature/amazing-feature`)
 3. Änderungen committen (`git commit -m 'Add amazing feature'`)
 4. Branch pushen (`git push origin feature/amazing-feature`)

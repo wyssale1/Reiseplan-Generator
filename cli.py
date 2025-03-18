@@ -3,18 +3,27 @@
 
 """
 Reiseplan-Generator CLI
-Command Line Interface für den Reiseplan-Generator
+Command Line Interface für den Reiseplan-Generator.
 """
 
 import os
 import sys
 import argparse
 from pathlib import Path
+import logging
 
-from reiseplan_generator import ReiseplanGenerator
+from reiseplan_generator.core import ReiseplanGenerator
+from reiseplan_generator.config import BASE_DIR
+from reiseplan_generator.utils.logging_setup import setup_logging
 
 
 def main():
+    """
+    Hauptfunktion für die CLI des Reiseplan-Generators.
+    """
+    # Logger konfigurieren
+    logger = setup_logging()
+    
     # Parser für Kommandozeilenargumente
     parser = argparse.ArgumentParser(
         description="Generiert PDF-Reisepläne aus JSON-Daten."
@@ -26,64 +35,66 @@ def main():
     )
     
     parser.add_argument(
-        "--output-dir",
-        help="Pfad zum Ausgabeverzeichnis (Standard: ./output)",
-        default="./output"
+        "--debug",
+        help="Aktiviert den Debug-Modus mit ausführlicher Protokollierung",
+        action="store_true"
     )
     
     parser.add_argument(
-        "--assets-dir",
-        help="Pfad zum Assets-Verzeichnis (Standard: ./assets)",
-        default="./assets"
-    )
-    
-    # Optional: API-Integration aktivieren
-    parser.add_argument(
-        "--api-integration",
-        help="Aktiviert die API-Integration für Fluginformationen",
+        "--open",
+        help="Öffnet das generierte PDF nach der Erstellung",
         action="store_true"
     )
     
     args = parser.parse_args()
     
+    # Debug-Modus
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug-Modus wurde aktiviert")
+    
     # Überprüfe, ob die Reiseplan-Datei existiert
     reiseplan_pfad = Path(args.reiseplan_pfad)
     if not reiseplan_pfad.exists():
-        print(f"Fehler: Die angegebene Datei '{reiseplan_pfad}' existiert nicht.")
+        logger.error(f"Fehler: Die angegebene Datei '{reiseplan_pfad}' existiert nicht.")
         sys.exit(1)
     
-    # Basis-Pfad ist das aktuelle Verzeichnis
-    basis_pfad = Path.cwd()
-    
-    # Erstelle die Assets- und Output-Verzeichnisse, falls sie nicht existieren
-    assets_pfad = Path(args.assets_dir)
-    assets_pfad.mkdir(exist_ok=True)
-    
-    output_pfad = Path(args.output_dir)
-    output_pfad.mkdir(exist_ok=True)
-    
-    # Überprüfe, ob die Assets-Unterverzeichnisse existieren und erstelle sie ggf.
-    (assets_pfad / "airlines").mkdir(exist_ok=True)
-    (assets_pfad / "hotels").mkdir(exist_ok=True)
-    
     # Initialisiere den Generator
-    generator = ReiseplanGenerator(basis_pfad=basis_pfad)
+    generator = ReiseplanGenerator()
     
     try:
         # Generiere den Reiseplan
         pdf_pfad = generator.generiere_reiseplan(reiseplan_pfad)
-        print(f"Reiseplan wurde erfolgreich generiert: {pdf_pfad}")
         
-        # Wenn auf einem Desktop-System, versuche das PDF zu öffnen
-        if sys.platform.startswith('darwin'):  # macOS
-            os.system(f"open '{pdf_pfad}'")
-        elif sys.platform.startswith('win'):  # Windows
-            os.system(f'start "" "{pdf_pfad}"')
-        elif sys.platform.startswith('linux'):  # Linux
-            os.system(f"xdg-open '{pdf_pfad}'")
+        if pdf_pfad:
+            logger.info(f"Reiseplan wurde erfolgreich generiert: {pdf_pfad}")
+            
+            # Wenn --open Option gesetzt ist, versuche das PDF zu öffnen
+            if args.open:
+                oeffne_pdf(pdf_pfad)
+        else:
+            logger.error("Fehler beim Generieren des Reiseplans.")
+            sys.exit(1)
     except Exception as e:
-        print(f"Fehler beim Generieren des Reiseplans: {e}")
+        logger.error(f"Unerwarteter Fehler beim Generieren des Reiseplans: {e}")
         sys.exit(1)
+
+
+def oeffne_pdf(pdf_pfad: str):
+    """
+    Öffnet ein PDF-Dokument mit dem Standardprogramm des Betriebssystems.
+    
+    Args:
+        pdf_pfad: Pfad zur PDF-Datei
+    """
+    if sys.platform.startswith('darwin'):  # macOS
+        os.system(f"open '{pdf_pfad}'")
+    elif sys.platform.startswith('win'):   # Windows
+        os.system(f'start "" "{pdf_pfad}"')
+    elif sys.platform.startswith('linux'): # Linux
+        os.system(f"xdg-open '{pdf_pfad}'")
+    else:
+        print(f"Konnte PDF nicht automatisch öffnen. Datei hier finden: {pdf_pfad}")
 
 
 if __name__ == "__main__":
