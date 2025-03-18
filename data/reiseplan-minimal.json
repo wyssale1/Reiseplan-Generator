@@ -3,7 +3,7 @@
     "startdatum": "2025-05-15",
     "enddatum": "2025-05-17",
     "reiseziel": "Frankfurt, Deutschland",
-    "reisende": ["Max Mustermann"],
+    "reisende": ["Max Mustermann", "Alexander Wyss"],
     
     "fluege": [
       {
