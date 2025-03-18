@@ -1,0 +1,52 @@
+{
+    "titel": "Geschäftsreise Frankfurt",
+    "startdatum": "2025-05-15",
+    "enddatum": "2025-05-17",
+    "reiseziel": "Frankfurt, Deutschland",
+    "reisende": ["Max Mustermann"],
+    
+    "fluege": [
+      {
+        "flugNr": "LX1070",
+        "flugDatum": "2025-05-15",
+        "buchungsNr": "ABC123"
+      },
+      {
+        "flugNr": "LX1071",
+        "flugDatum": "2025-05-17",
+        "buchungsNr": "ABC123"
+      }
+    ],
+    
+    "hotels": [
+      {
+        "name": "Steigenberger Airport Hotel",
+        "adresse": "Unterschweinstiege 16, 60549 Frankfurt am Main, Deutschland",
+        "checkin": "2025-05-15T14:00:00",
+        "checkout": "2025-05-17T12:00:00",
+        "buchungsNr": "HOTEL456"
+      }
+    ],
+    
+    "aktivitaeten": [
+      {
+        "name": "Meeting mit Kunden",
+        "datum": "2025-05-16",
+        "startzeit": "2025-05-16T09:00:00",
+        "endzeit": "2025-05-16T12:00:00",
+        "ort": "Frankfurter Büro, Am Hauptbahnhof 16"
+      }
+    ],
+    
+    "zusatzinfo": {
+      "notfallkontakte": [
+        {
+          "name": "Büro Zürich",
+          "telefon": "+41 44 123 45 67"
+        }
+      ],
+      "waehrung": "Euro (€)",
+      "zeitzone": "CET/CEST (Mitteleuropäische Zeit)",
+      "notizen": "Denken Sie daran, dass das Meeting am Freitag um 9 Uhr beginnt. Taxi zum Meeting ist bereits gebucht."
+    }
+  }

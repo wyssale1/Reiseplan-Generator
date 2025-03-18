@@ -1,0 +1,3 @@
+2025-03-18 18:18:53 - reiseplan_generator - ERROR - Fehler: Die angegebene Datei 'data/reiseplan-minimal.json' existiert nicht.
+2025-03-18 18:19:21 - reiseplan_generator - ERROR - Fehler beim Generieren des Reiseplans.
+2025-03-18 18:20:02 - reiseplan_generator - INFO - Reiseplan wurde erfolgreich generiert: /Users/alexanderwyss/Clones/Reiseplan-Generator/output/Geschäftsreise-Frankfurt.pdf

@@ -12,9 +12,9 @@ import argparse
 from pathlib import Path
 import logging
 
-from reiseplan_generator.core import ReiseplanGenerator
-from reiseplan_generator.config import BASE_DIR
-from reiseplan_generator.utils.logging_setup import setup_logging
+from generator.core import ReiseplanGenerator
+from generator.config import BASE_DIR
+from generator.utils.logging_setup import setup_logging
 
 
 def main():
