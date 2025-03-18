@@ -1,6 +1,6 @@
 # Reiseplan-Generator
 
-Ein modernes Tool zur Erstellung von PDF-Reiseplänen aus strukturierten JSON-Daten. Mit diesem Generator können Sie professionelle Reisedokumente mit Flug-, Hotel- und Aktivitätsinformationen erstellen und verwalten.
+Ein elegantes Tool zur Erstellung von PDF-Reiseplänen aus strukturierten JSON-Daten. Mit diesem Generator können Sie professionelle Reisedokumente mit Flug-, Hotel- und Aktivitätsinformationen erstellen und verwalten.
 
 ## 🌟 Funktionen
 
@@ -13,11 +13,10 @@ Ein modernes Tool zur Erstellung von PDF-Reiseplänen aus strukturierten JSON-Da
 
 ## 🚀 Technologie-Stack
 
-- **TypeScript**: Für typsichere Entwicklung
-- **Vite**: Moderne Build-Umgebung 
-- **PDFKit**: Zur PDF-Generierung
-- **Moment.js**: Für Datums- und Zeitformatierung
-- **Axios**: Für API-Integrationen (optional)
+- **Python 3.8+**: Moderne, lesbare Programmierung
+- **ReportLab**: Robuste Bibliothek zur PDF-Generierung
+- **Pillow**: Zur Verarbeitung von Bildern
+- **Requests**: Für optional API-Integrationen
 
 ## 📦 Installation
 
@@ -27,17 +26,17 @@ git clone https://github.com/yourusername/reiseplan-generator.git
 cd reiseplan-generator
 
 # Abhängigkeiten installieren
-npm install
+pip install -r requirements.txt
 
-# Build erstellen
-npm run build
+# Ordnerstruktur vorbereiten
+mkdir -p assets/airlines assets/hotels data output
 ```
 
 ## 🔧 Verwendung
 
 ### 1. Reiseplan-Daten erstellen
 
-Erstellen Sie eine JSON-Datei mit Ihrer Reiseplanstruktur:
+Erstellen Sie eine JSON-Datei mit Ihrer Reiseplanstruktur und speichern Sie diese im `data/`-Verzeichnis:
 
 ```json
 {
@@ -67,48 +66,71 @@ Erstellen Sie eine JSON-Datei mit Ihrer Reiseplanstruktur:
 }
 ```
 
-### 2. PDF generieren
+### 2. Logos hinzufügen (optional)
+
+- Fügen Sie Ihr persönliches Logo als `assets/logo.png` hinzu
+- Speichern Sie Airline-Logos unter `assets/airlines/` (z.B. `swiss.png`)
+- Speichern Sie Hotel-Logos unter `assets/hotels/` (z.B. `shangri-la-london.png`)
+
+### 3. PDF generieren
 
 ```bash
-# PDF aus der JSON-Datei generieren
-npm run generate -- ./data/reiseplan-london.json
+# Über das CLI-Modul
+python cli.py data/reiseplan-london.json
+
+# Alternativ direkt über das Hauptmodul
+python reiseplan_generator.py data/reiseplan-london.json
 ```
 
-Das generierte PDF wird im `output`-Verzeichnis gespeichert.
+Das generierte PDF wird im `output/`-Verzeichnis gespeichert.
 
 ## 📁 Projektstruktur
 
 ```
 reiseplan-generator/
-├── src/                  # Quellcode
-│   ├── main.ts           # Hauptlogik
-│   ├── cli.ts            # Kommandozeilen-Interface
-│   └── types.ts          # TypeScript-Definitionen
-├── assets/               # Bilder und Assets
-│   ├── logo.png          
-│   ├── airlines/         # Airline-Logos
-│   └── hotels/           # Hotel-Logos
-├── data/                 # JSON-Reisepläne
-├── output/               # Generierte PDFs
-├── package.json          
-├── tsconfig.json        
-└── vite.config.ts       
+├── reiseplan_generator.py   # Hauptmodul mit PDF-Generierungsfunktionen
+├── cli.py                   # Command Line Interface
+├── requirements.txt         # Python-Abhängigkeiten
+├── assets/                  # Bilder und andere Assets
+│   ├── logo.png             # Ihr persönliches Logo
+│   ├── airlines/            # Airline-Logos
+│   └── hotels/              # Hotel-Logos
+├── data/                    # JSON-Daten für Reisepläne
+└── output/                  # Generierte PDF-Dokumente
 ```
 
 ## 🔄 Erweiterte Funktionen
 
 ### API-Integration für Flugdaten
 
-Die Funktion `holeFluginformationen()` kann mit APIs wie FlightAware oder Amadeus verbunden werden, um automatisch aktuelle Flugdaten zu laden.
+Die Methode `hole_fluginformationen()` kann mit APIs wie FlightAware, Amadeus oder Skyscanner verbunden werden, um automatisch aktuelle Flugdaten zu laden:
 
-```typescript
-// API-Key in einer .env-Datei konfigurieren
-// API-Endpoint in holeFluginformationen() anpassen
+```python
+# In reiseplan_generator.py
+def hole_fluginformationen(self, flug_nr, datum):
+    api_key = os.environ.get("FLIGHTAPI_KEY")
+    url = f"https://api.flightaware.com/v2/flights/{flug_nr}"
+    response = requests.get(url, headers={"Authorization": f"Bearer {api_key}"})
+    return response.json()
 ```
 
-### Anpassbare Layouts
+### GUI-Oberfläche hinzufügen
 
-Sie können das PDF-Layout durch Ändern der entsprechenden Funktionen in `main.ts` anpassen.
+Mit Python-Bibliotheken wie tkinter, PyQt oder Streamlit können Sie leicht eine grafische Benutzeroberfläche erstellen:
+
+```python
+# Beispiel für ein einfaches Streamlit-Interface
+import streamlit as st
+from reiseplan_generator import ReiseplanGenerator
+
+st.title("Reiseplan-Generator")
+uploaded_file = st.file_uploader("JSON-Reiseplan hochladen", type="json")
+
+if uploaded_file is not None:
+    generator = ReiseplanGenerator()
+    pdf_path = generator.generiere_reiseplan(uploaded_file)
+    st.success(f"PDF erfolgreich generiert: {pdf_path}")
+```
 
 ## 🤝 Beitragen
 
@@ -123,9 +145,3 @@ Beiträge sind willkommen! So können Sie beitragen:
 ## 📝 Lizenz
 
 Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe die [LICENSE](LICENSE) Datei für Details.
-
-## 📬 Kontakt
-
-Ihr Name - [@IhrTwitterHandle](https://twitter.com/IhrTwitterHandle) - ihre.email@example.com
-
-Projekt-Link: [https://github.com/yourusername/reiseplan-generator](https://github.com/yourusername/reiseplan-generator)

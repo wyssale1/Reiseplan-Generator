@@ -1,0 +1,75 @@
+{
+    "titel": "London Geschäftsreise",
+    "startdatum": "2025-04-10",
+    "enddatum": "2025-04-15",
+    "reiseziel": "London, Vereinigtes Königreich",
+    "reisende": ["Max Mustermann"],
+    
+    "fluege": [
+      {
+        "airline": "SWISS",
+        "flugNr": "LX12",
+        "abflugOrt": "Zürich",
+        "abflugCode": "ZRH",
+        "abflugZeit": "2025-04-10T18:55:00",
+        "ankunftOrt": "London City",
+        "ankunftCode": "LCY",
+        "ankunftZeit": "2025-04-10T20:00:00",
+        "buchungsNr": "ABCDEF"
+      },
+      {
+        "airline": "SWISS",
+        "flugNr": "LX13",
+        "abflugOrt": "London City",
+        "abflugCode": "LCY",
+        "abflugZeit": "2025-04-15T20:30:00",
+        "ankunftOrt": "Zürich",
+        "ankunftCode": "ZRH",
+        "ankunftZeit": "2025-04-15T23:10:00",
+        "buchungsNr": "ABCDEF"
+      }
+    ],
+    
+    "hotels": [
+      {
+        "name": "Shangri-La London",
+        "adresse": "31 St Thomas St, London SE1 9QU, Vereinigtes Königreich",
+        "checkin": "2025-04-10T14:00:00",
+        "checkout": "2025-04-15T12:00:00",
+        "buchungsNr": "HOTEL123"
+      }
+    ],
+    
+    "aktivitaeten": [
+      {
+        "name": "Meeting mit UK Team",
+        "datum": "2025-04-11",
+        "startzeit": "2025-04-11T09:00:00",
+        "endzeit": "2025-04-11T17:00:00",
+        "ort": "London Office, 123 Business Street"
+      },
+      {
+        "name": "Abendessen mit Kunden",
+        "datum": "2025-04-12",
+        "startzeit": "2025-04-12T19:00:00",
+        "endzeit": "2025-04-12T22:00:00",
+        "ort": "The Ivy, 1-5 West St, London WC2H 9NQ"
+      }
+    ],
+    
+    "zusatzinfo": {
+      "notfallkontakte": [
+        {
+          "name": "Büro Zürich",
+          "telefon": "+41 44 123 45 67"
+        },
+        {
+          "name": "Lokaler Kontakt (Sarah)",
+          "telefon": "+44 20 1234 5678"
+        }
+      ],
+      "waehrung": "Britisches Pfund (£)",
+      "zeitzone": "GMT+1 (Sommerzeit)",
+      "notizen": "Oyster Card für U-Bahn mitnehmen. Adapter für UK-Steckdosen nicht vergessen."
+    }
+  }
