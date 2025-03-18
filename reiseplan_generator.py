@@ -4,6 +4,7 @@
 """
 Reiseplan-Generator
 Ein Tool zum Erstellen von PDF-Reiseplänen aus strukturierten JSON-Daten.
+Mit Unterstützung für Open Sans Font und verbesserte Seitenumbrüche.
 """
 
 import os
@@ -11,6 +12,8 @@ import json
 import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union
+import tempfile
+import shutil
 
 import requests
 from reportlab.lib import colors
@@ -18,7 +21,9 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from PIL import Image as PILImage
 
 
@@ -37,30 +42,79 @@ class ReiseplanGenerator:
         self.basis_pfad = Path(basis_pfad) if basis_pfad else Path.cwd()
         self.assets_pfad = self.basis_pfad / "assets"
         self.output_pfad = self.basis_pfad / "output"
+        self.fonts_pfad = self.assets_pfad / "fonts"
         
-        # Erstelle Output-Verzeichnis, falls es nicht existiert
+        # Erstelle Verzeichnisse, falls sie nicht existieren
         self.output_pfad.mkdir(exist_ok=True)
+        self.fonts_pfad.mkdir(exist_ok=True)
+        
+        # Lade und registriere Open Sans Font, falls nötig
+        self._setup_fonts()
         
         # Styles für PDF
         self.styles = getSampleStyleSheet()
+        
+        # Überschreibe vorhandene oder füge neue Styles hinzu
         self.styles.add(ParagraphStyle(
             name='Titel',
-            fontName='Helvetica-Bold',
+            fontName='OpenSans-Bold',
             fontSize=24,
             spaceAfter=12
         ))
         self.styles.add(ParagraphStyle(
             name='Untertitel',
-            fontName='Helvetica-Bold',
+            fontName='OpenSans-Bold',
             fontSize=16,
             spaceAfter=8
         ))
-        self.styles.add(ParagraphStyle(
-            name='Normal',
-            fontName='Helvetica',
-            fontSize=11,
-            spaceAfter=6
-        ))
+        
+        # Modifiziere existierenden 'Normal' Style statt einen neuen hinzuzufügen
+        self.styles['Normal'].fontName = 'OpenSans'
+        self.styles['Normal'].fontSize = 11
+        self.styles['Normal'].spaceAfter = 6
+
+    def _setup_fonts(self):
+        """
+        Lädt und registriert Open Sans Fonts für die Verwendung mit ReportLab.
+        Lädt die Fonts herunter, falls sie nicht lokal verfügbar sind.
+        """
+        # Definiere Font-Dateien und URLs
+        font_files = {
+            'OpenSans': {
+                'file': 'OpenSans-Regular.ttf',
+                'url': 'https://github.com/googlefonts/opensans/raw/main/fonts/ttf/OpenSans-Regular.ttf'
+            },
+            'OpenSans-Bold': {
+                'file': 'OpenSans-Bold.ttf',
+                'url': 'https://github.com/googlefonts/opensans/raw/main/fonts/ttf/OpenSans-Bold.ttf'
+            }
+        }
+        
+        for font_name, font_info in font_files.items():
+            font_path = self.fonts_pfad / font_info['file']
+            
+            # Wenn die Font-Datei nicht existiert, lade sie herunter
+            if not font_path.exists():
+                try:
+                    print(f"Lade Font {font_name} herunter...")
+                    response = requests.get(font_info['url'], stream=True)
+                    response.raise_for_status()
+                    
+                    with open(font_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    print(f"Font {font_name} erfolgreich heruntergeladen.")
+                except Exception as e:
+                    print(f"Fehler beim Herunterladen von Font {font_name}: {e}")
+                    print("Verwende Standard-Fonts stattdessen.")
+                    return
+            
+            # Registriere die Font bei ReportLab
+            try:
+                pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+            except Exception as e:
+                print(f"Fehler beim Registrieren der Font {font_name}: {e}")
+                print("Verwende Standard-Fonts stattdessen.")
 
     def generiere_reiseplan(self, reiseplan_pfad: Union[str, Path]) -> str:
         """
@@ -98,21 +152,32 @@ class ReiseplanGenerator:
         # Füge Flüge hinzu
         if "fluege" in reiseplan_daten and reiseplan_daten["fluege"]:
             for flug in reiseplan_daten["fluege"]:
-                self._erstelle_flug_block(elemente, flug)
+                # Verwende KeepTogether, um zu verhindern, dass Blöcke auf mehrere Seiten aufgeteilt werden
+                flug_elemente = []
+                self._erstelle_flug_block(flug_elemente, flug)
+                elemente.append(KeepTogether(flug_elemente))
         
         # Füge Hotels hinzu
         if "hotels" in reiseplan_daten and reiseplan_daten["hotels"]:
             for hotel in reiseplan_daten["hotels"]:
-                self._erstelle_hotel_block(elemente, hotel)
+                # Verwende KeepTogether für Hotelblöcke
+                hotel_elemente = []
+                self._erstelle_hotel_block(hotel_elemente, hotel)
+                elemente.append(KeepTogether(hotel_elemente))
         
         # Füge Aktivitäten hinzu
         if "aktivitaeten" in reiseplan_daten and reiseplan_daten["aktivitaeten"]:
             for aktivitaet in reiseplan_daten["aktivitaeten"]:
-                self._erstelle_aktivitaet_block(elemente, aktivitaet)
+                # Verwende KeepTogether für Aktivitätsblöcke
+                aktivitaet_elemente = []
+                self._erstelle_aktivitaet_block(aktivitaet_elemente, aktivitaet)
+                elemente.append(KeepTogether(aktivitaet_elemente))
         
         # Füge Zusatzinformationen hinzu
         if "zusatzinfo" in reiseplan_daten:
-            self._erstelle_zusatzinfo_block(elemente, reiseplan_daten["zusatzinfo"])
+            zusatzinfo_elemente = []
+            self._erstelle_zusatzinfo_block(zusatzinfo_elemente, reiseplan_daten["zusatzinfo"])
+            elemente.append(KeepTogether(zusatzinfo_elemente))
         
         # Baue PDF zusammen
         doc.build(elemente)
@@ -226,7 +291,8 @@ class ReiseplanGenerator:
             style=TableStyle([
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
                 ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (0, -1), 'OpenSans-Bold'),  # Open Sans Bold für Labels
+                ('FONTNAME', (1, 0), (1, -1), 'OpenSans'),      # Open Sans für Inhalte
                 ('ALIGN', (0, 0), (0, -1), 'LEFT'),
                 ('ALIGN', (1, 0), (1, -1), 'LEFT'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -288,7 +354,8 @@ class ReiseplanGenerator:
             style=TableStyle([
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
                 ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (0, -1), 'OpenSans-Bold'),  # Open Sans Bold für Labels
+                ('FONTNAME', (1, 0), (1, -1), 'OpenSans'),      # Open Sans für Inhalte
                 ('ALIGN', (0, 0), (0, -1), 'LEFT'),
                 ('ALIGN', (1, 0), (1, -1), 'LEFT'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -345,7 +412,8 @@ class ReiseplanGenerator:
             style=TableStyle([
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
                 ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (0, -1), 'OpenSans-Bold'),  # Open Sans Bold für Labels
+                ('FONTNAME', (1, 0), (1, -1), 'OpenSans'),      # Open Sans für Inhalte
                 ('ALIGN', (0, 0), (0, -1), 'LEFT'),
                 ('ALIGN', (1, 0), (1, -1), 'LEFT'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -396,6 +464,7 @@ class ReiseplanGenerator:
                 colWidths=[8.5*cm, 8.5*cm],
                 style=TableStyle([
                     ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                    ('FONTNAME', (0, 0), (-1, -1), 'OpenSans'),  # Open Sans für Kontakte
                     ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 12),
@@ -425,7 +494,8 @@ class ReiseplanGenerator:
                     style=TableStyle([
                         ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
                         ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                        ('FONTNAME', (0, 0), (0, -1), 'OpenSans-Bold'),  # Open Sans Bold für Labels
+                        ('FONTNAME', (1, 0), (1, -1), 'OpenSans'),      # Open Sans für Inhalte
                         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
                         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -476,37 +546,6 @@ class ReiseplanGenerator:
             return dt.strftime("%H:%M")
         except (ValueError, TypeError):
             return iso_datum_zeit
-
-    def hole_fluginformationen(self, flug_nr: str, datum: str) -> Optional[Dict[str, Any]]:
-        """
-        Optional: Holt Fluginformationen von einer API.
-        
-        Args:
-            flug_nr: Flugnummer
-            datum: Datum des Fluges
-            
-        Returns:
-            Optional[Dict[str, Any]]: Fluginformationen oder None bei Fehler
-        """
-        try:
-            # Hier könnte eine Integration mit einer Flug-API wie FlightAware, Skyscanner, etc. stehen
-            # Beispiel (dies ist nur ein Platzhalter, Sie benötigen einen API-Key und die richtige API):
-            """
-            response = requests.get(
-                f"https://api.flightapi.example/flight/{flug_nr}",
-                params={
-                    "date": datum,
-                    "apiKey": "IHR_API_KEY"
-                }
-            )
-            return response.json()
-            """
-            
-            print(f"Fluginformationen für {flug_nr} am {datum} werden abgerufen...")
-            return None  # Platzhalter
-        except Exception as e:
-            print(f"Fehler beim Abrufen der Fluginformationen: {e}")
-            return None
 
 
 # Direkter Aufruf über Kommandozeile
