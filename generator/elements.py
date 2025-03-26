@@ -5,6 +5,10 @@ Funktionen zum Erstellen von PDF-Elementen für den Reiseplan-Generator.
 import datetime
 from typing import Dict, Any, List
 from pathlib import Path
+from reportlab.graphics import renderPDF
+from svglib.svglib import svg2rlg
+import io
+import logging
 
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -158,6 +162,207 @@ def erstelle_flug_block(elemente: List, flug: Dict[str, Any], styles: Dict[str, 
 
 
 def erstelle_hotel_block(elemente: List, hotel: Dict[str, Any], styles: Dict[str, ParagraphStyle]) -> None:
+    """
+    Erstellt einen Hotelblock im PDF.
+    
+    Args:
+        elemente: Liste der PDF-Elemente
+        hotel: Hoteldaten aus JSON
+        styles: Styles für die PDF-Formatierung
+    """
+    try:
+        # Hotel-Logo Matching verbessern
+        hotel_name = hotel['name']
+        normalized_hotel_name = hotel_name.lower()
+        
+        # Entferne häufige Artikel und Präfixe
+        for prefix in ['the ', 'hotel ', 'das ', 'der ', 'die ']:
+            if normalized_hotel_name.startswith(prefix):
+                normalized_hotel_name = normalized_hotel_name[len(prefix):]
+        
+        # Entferne Sonderzeichen und ersetze Leerzeichen
+        normalized_hotel_name = ''.join(c for c in normalized_hotel_name if c.isalnum() or c.isspace())
+        normalized_hotel_name = normalized_hotel_name.replace(' ', '-')
+        
+        # Versuche verschiedene Varianten des Namens für Logo-Suche
+        logo_variants = [
+            (f"{normalized_hotel_name}.png", "png"),
+            (f"{normalized_hotel_name}.svg", "svg"),
+            (f"{hotel_name.lower().replace(' ', '-')}.png", "png"),
+            (f"{hotel_name.lower().replace(' ', '-')}.svg", "svg")
+        ]
+        
+        # Suche nach allen möglichen Logo-Dateivarianten
+        found_logo = False
+        for filename, filetype in logo_variants:
+            logo_path = HOTELS_DIR / filename
+            if logo_path.exists():
+                try:
+                    if filetype == "svg":
+                        # SVG-Datei mit svglib verarbeiten
+                        drawing = svg2rlg(str(logo_path))
+                        if drawing:
+                            # Skaliere das SVG auf die gewünschte Größe
+                            xscale = 3*cm / drawing.width
+                            yscale = 1.5*cm / drawing.height
+                            scale = min(xscale, yscale)
+                            drawing.width = drawing.width * scale
+                            drawing.height = drawing.height * scale
+                            drawing.scale(scale, scale)
+                            elemente.append(drawing)
+                            found_logo = True
+                    else:
+                        # PNG direkt verwenden
+                        img = Image(str(logo_path), width=3*cm, height=1.5*cm)
+                        elemente.append(img)
+                        found_logo = True
+                    
+                    if found_logo:
+                        elemente.append(Spacer(1, 0.2*cm))
+                        break
+                except Exception as e:
+                    logger.warning(f"Fehler beim Laden des Logos {filename}: {e}")
+                    continue
+    except Exception as e:
+        logger.warning(f"Fehler beim Verarbeiten des Hotel-Logos: {e}")
+    
+    # Trennlinie
+    elemente.append(
+        Table(
+            [['']], 
+            colWidths=[17*cm], 
+            style=TableStyle([
+                ('LINEBELOW', (0, 0), (0, 0), 1, colors.black)
+            ])
+        )
+    )
+    elemente.append(Spacer(1, 0.2*cm))
+    
+    # Titel: Hotel
+    elemente.append(Paragraph("Hotel", styles["Untertitel"]))
+    elemente.append(Spacer(1, 0.2*cm))
+    
+    # Hoteldetails als Tabelle
+    hotel_details = [
+        ["Name:", hotel["name"]],
+        ["Adresse:", hotel["adresse"]],
+        ["Check-in:", formatiere_datum_zeit(hotel["checkin"])],
+        ["Check-out:", formatiere_datum_zeit(hotel["checkout"])],
+    ]
+    
+    if "buchungsNr" in hotel and hotel["buchungsNr"]:
+        hotel_details.append(["Buchungsnummer:", hotel["buchungsNr"]])
+    
+    hotel_tabelle = Table(
+        hotel_details,
+        colWidths=[4*cm, 13*cm],
+        style=TableStyle([
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('FONTNAME', (0, 0), (0, -1), 'OpenSans-Bold'),  # Open Sans Bold für Labels
+            ('FONTNAME', (1, 0), (1, -1), 'OpenSans'),      # Open Sans für Inhalte
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 12),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ])
+    )
+    
+    elemente.append(hotel_tabelle)
+    elemente.append(Spacer(1, 0.5*cm))
+    """
+    Erstellt einen Hotelblock im PDF.
+    
+    Args:
+        elemente: Liste der PDF-Elemente
+        hotel: Hoteldaten aus JSON
+        styles: Styles für die PDF-Formatierung
+    """
+    # Hotel-Logo Matching verbessern
+    hotel_name = hotel['name']
+    normalized_hotel_name = hotel_name.lower()
+    
+    # Entferne häufige Artikel und Präfixe
+    for prefix in ['the ', 'hotel ', 'das ', 'der ', 'die ']:
+        if normalized_hotel_name.startswith(prefix):
+            normalized_hotel_name = normalized_hotel_name[len(prefix):]
+    
+    # Entferne Sonderzeichen und ersetze Leerzeichen
+    normalized_hotel_name = ''.join(c for c in normalized_hotel_name if c.isalnum() or c.isspace())
+    normalized_hotel_name = normalized_hotel_name.replace(' ', '-')
+    
+    # Versuche verschiedene Varianten des Namens für Logo-Suche
+    logo_variants = [
+        f"{normalized_hotel_name}.png",
+        f"{normalized_hotel_name}.svg",
+        f"{hotel_name.lower().replace(' ', '-')}.png",
+        f"{hotel_name.lower().replace(' ', '-')}.svg"
+    ]
+    
+    # Suche nach allen möglichen Logo-Dateivarianten
+    found_logo = None
+    for variant in logo_variants:
+        logo_path = HOTELS_DIR / variant
+        if logo_path.exists():
+            found_logo = logo_path
+            break
+    
+    # Logo anzeigen, wenn gefunden
+    if found_logo:
+        img = Image(str(found_logo), width=3*cm, height=1.5*cm)
+        elemente.append(img)
+        elemente.append(Spacer(1, 0.2*cm))
+    
+    # Trennlinie
+    elemente.append(
+        Table(
+            [['']], 
+            colWidths=[17*cm], 
+            style=TableStyle([
+                ('LINEBELOW', (0, 0), (0, 0), 1, colors.black)
+            ])
+        )
+    )
+    elemente.append(Spacer(1, 0.2*cm))
+    
+    # Titel: Hotel
+    elemente.append(Paragraph("Hotel", styles["Untertitel"]))
+    elemente.append(Spacer(1, 0.2*cm))
+    
+    # Hoteldetails als Tabelle
+    hotel_details = [
+        ["Name:", hotel["name"]],
+        ["Adresse:", hotel["adresse"]],
+        ["Check-in:", formatiere_datum_zeit(hotel["checkin"])],
+        ["Check-out:", formatiere_datum_zeit(hotel["checkout"])],
+    ]
+    
+    if "buchungsNr" in hotel and hotel["buchungsNr"]:
+        hotel_details.append(["Buchungsnummer:", hotel["buchungsNr"]])
+    
+    hotel_tabelle = Table(
+        hotel_details,
+        colWidths=[4*cm, 13*cm],
+        style=TableStyle([
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.white),
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('FONTNAME', (0, 0), (0, -1), 'OpenSans-Bold'),  # Open Sans Bold für Labels
+            ('FONTNAME', (1, 0), (1, -1), 'OpenSans'),      # Open Sans für Inhalte
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 12),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ])
+    )
+    
+    elemente.append(hotel_tabelle)
+    elemente.append(Spacer(1, 0.5*cm))
     """
     Erstellt einen Hotelblock im PDF.
     
